@@ -10,7 +10,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class DbTool {
-    private static final Logger LOGGER = Logger.getLogger(DatabaseInserter.class.getName());
+    private static final Logger LOGGER = Logger.getLogger(DbTool.class.getName());
     private static final DbUtil dbUtil = new DbUtil();
     private static final String SQL_LAGERORT_INSERT_UPDATE =
             "INSERT INTO lagerort (id, cdate, mdate, version, status, lstnr, art_id, regal, fach, bereich, haupt_lagerort) " +
@@ -27,6 +27,9 @@ public class DbTool {
     }
 
     private static List<ArtikelLagerort> generiereLagerorte(int anzahl) {
+        if (anzahl < 0) {
+            throw new IllegalArgumentException("Anzahl muss positiv sein");
+        }
         List<ArtikelLagerort> lagerorte = new ArrayList<>();
         for (int i = 1; i <= anzahl; i++) {
             lagerorte.add(new ArtikelLagerort(i, i));
@@ -35,15 +38,12 @@ public class DbTool {
     }
 
     private static int insertLagerorteBulk(List<ArtikelLagerort> lagerorte) {
-        Connection connection = null;
-        PreparedStatement preparedStatement = null;
         int result = 0;
         Instant start = Instant.now();
 
-        try {
-            connection = dbUtil.getConnection();
+        try (Connection connection = dbUtil.getConnection();
+             PreparedStatement preparedStatement = connection.prepareStatement(SQL_LAGERORT_INSERT_UPDATE)) {
             connection.setAutoCommit(false);
-            preparedStatement = connection.prepareStatement(SQL_LAGERORT_INSERT_UPDATE);
 
             for (ArtikelLagerort lagerort : lagerorte) {
                 int index = 1;
@@ -64,21 +64,21 @@ public class DbTool {
             preparedStatement.executeBatch();
             connection.commit();
             result = lagerorte.size();
-
         } catch (SQLException e) {
             LOGGER.log(Level.SEVERE, "Fehler beim Ausführen der Batch-Operation: " + e.getMessage(), e);
-            try {
-                if (connection != null) connection.rollback();
-            } catch (SQLException exception) {
-                LOGGER.log(Level.SEVERE, "Fehler beim Rollback: " + exception.getMessage(), exception);
+            if (connection != null) {
+                try {
+                    connection.rollback();
+                } catch (SQLException exception) {
+                    LOGGER.log(Level.SEVERE, "Fehler beim Rollback: " + exception.getMessage(), exception);
+                }
             }
-        } finally {
-            DbUtil.close(preparedStatement, connection);
-
-            Instant end = Instant.now();
-            long timeElapsed = Duration.between(start, end).toMillis();
-            LOGGER.info("Zeit für die Durchführung der Inserts: " + timeElapsed + " ms");
         }
+
+        Instant end = Instant.now();
+        long timeElapsed = Duration.between(start, end).toMillis();
+        LOGGER.info("Zeit für die Durchführung der Inserts: " + timeElapsed + " ms");
+
         return result;
     }
 }

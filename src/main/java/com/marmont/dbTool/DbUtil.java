@@ -11,12 +11,12 @@ public class DbUtil {
 
     private static final Logger LOGGER = Logger.getLogger(DbUtil.class.getName());
 
-    private String dbUrl = "jdbc:mysql://localhost:3306/training";
-    private String username = "training";
-    private String password = "training";
+    private static final String DB_URL = "jdbc:mysql://localhost:3306/training";
+    private static final String USERNAME = "training";
+    private static final String PASSWORD = "training";
 
     public Connection getConnection() throws SQLException {
-        return DriverManager.getConnection(dbUrl, username, password);
+        return DriverManager.getConnection(DB_URL, USERNAME, PASSWORD);
     }
 
     public static void close(PreparedStatement preparedStatement, Connection connection) {
